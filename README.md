@@ -1,27 +1,32 @@
-# 🔬 Open Co Scientist
-
-<div align="center">
-  
-  ![Open Co Scientist Logo](./docs/co-scientist-architecture.jpg)
-  
-  *An open-source implementation of an AI-powered scientific research assistant*
-  
   [![TypeScript](https://img.shields.io/badge/TypeScript-4.9.5-blue.svg)](https://www.typescriptlang.org/)
   [![Mastra.ai](https://img.shields.io/badge/Framework-Mastra.ai-purple.svg)](https://mastra.ai/)
   [![Vercel AI SDK](https://img.shields.io/badge/Vercel-AI_SDK-black.svg)](https://sdk.vercel.ai/)
   [![GitHub stars](https://img.shields.io/github/stars/vincenzodomina/open-co-scientist?style=social)](https://github.com/vincenzodomina/open-co-scientist/stargazers)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+
+# 🔬 Open Co Scientist
+
+<div align="center">
+  
+  ![Open Co Scientist Logo](./docs/co-scientist-architecture.jpg)
+  
+  *AI co-scientist system overview [1]*
   
 </div>
 
+Given a scientist’s research goal that has been specified in natural language, the AI co-scientist is designed to generate novel research hypotheses, a detailed research overview, and experimental protocols. To do so, it uses a coalition of specialized agents — Generation, Reflection, Ranking, Evolution, Proximity and Meta-review — that are inspired by the scientific method itself. These agents use automated feedback to iteratively generate, evaluate, and refine hypotheses, resulting in a self-improving cycle of increasingly high-quality and novel outputs.
+
 ## 🧠 Vision
 
-**Open Co Scientist** aims to democratize scientific research by providing an open-source implementation of an AI co-scientist system. Inspired by recent advances in large language models and multi-agent frameworks, our goal is to create a powerful tool that augments human scientists by helping generate hypotheses, explore scientific literature, and design experiments.
+**Open Co Scientist** aims to democratize scientific research by providing an open-source implementation of an AI co-scientist system. 
 
 This project is an open-source recreation of the concepts described in Google's "Towards an AI co-scientist" paper [1], adapting its powerful multi-agent architecture for public use using modern TypeScript, the Mastra.ai agent framework, and the Vercel AI SDK.
 
-## 🌟 Features
+## 🌟 How it works
+
+Purpose-built for collaboration, scientists can interact with the system in many ways, including by directly providing their own seed ideas for exploration or by providing feedback on generated outputs in natural language. The AI co-scientist also uses tools, like web-search and specialized AI models, to enhance the grounding and quality of generated hypotheses.
 
 Open Co Scientist employs a "generate, debate, evolve" approach through a coordinated system of specialized AI agents:
 
@@ -37,10 +42,11 @@ Open Co Scientist employs a "generate, debate, evolve" approach through a coordi
 
 ### 🔄 Research Workflow
 
-1. Scientists provide research goals in natural language
-2. The system analyzes and configures a tailored research plan
-3. Specialized agents generate, evaluate, rank, and refine hypotheses
-4. Scientists receive comprehensive research overviews with testable hypotheses
+1. Scientists provide research goals or even seed ideas in natural language
+2. The Supervisor Agent parses the assigned goal into a research plan configuration
+3. The Supervisor agent assigns the specialized agents to the worker queue and allocates resources. 
+4. Specialized agents generate, evaluate, rank, and refine hypotheses
+5. Scientists receive comprehensive research overviews with testable hypotheses
 
 ### 🛠️ Key Capabilities
 
