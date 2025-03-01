@@ -19,7 +19,7 @@
 
 **Open Co Scientist** aims to democratize scientific research by providing an open-source implementation of an AI co-scientist system. Inspired by recent advances in large language models and multi-agent frameworks, our goal is to create a powerful tool that augments human scientists by helping generate hypotheses, explore scientific literature, and design experiments.
 
-This project is an open-source recreation of the concepts described in Google's "Towards an AI co-scientist" paper, adapting its powerful multi-agent architecture for public use using modern TypeScript, the Mastra.ai agent framework, and the Vercel AI SDK.
+This project is an open-source recreation of the concepts described in Google's "Towards an AI co-scientist" paper [1], adapting its powerful multi-agent architecture for public use using modern TypeScript, the Mastra.ai agent framework, and the Vercel AI SDK.
 
 ## 🌟 Features
 
@@ -144,6 +144,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 This project draws inspiration from Google's "Towards an AI co-scientist" paper. We aim to recreate and extend these capabilities in an open-source framework, making AI-assisted scientific discovery accessible to everyone.
+
+## References
+
+[1] Gottweis, J., Weng, W.-H., et al. (2025). [Towards an AI co-scientist](https://storage.googleapis.com/coscientist_paper/ai_coscientist.pdf).
 
 ## 📞 Contact
 
