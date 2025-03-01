@@ -1,0 +1,27 @@
+{
+  "name": "open-co-scientist",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "mastra dev"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "type": "module",
+  "dependencies": {
+    "@ai-sdk/openai": "^1.1.15",
+    "@mastra/core": "^0.4.4",
+    "@mastra/memory": "^0.1.7",
+    "openai": "^4.85.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "mastra": "^0.2.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}
