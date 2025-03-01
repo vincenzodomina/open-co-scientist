@@ -13,12 +13,10 @@ import { coScientistSupervisorAgent } from '../agents/coScientistSupervisorAgent
 import { deepResearchTool } from '../tools/deepResearchTool';
 import { coScientistWorkerAgent } from '../agents/coScientistWorkerAgent';
 
-// Create logger for the workflow
 const logger = createLogger({
   name: 'coScientistWorkflow'
 });
 
-// More specific schema definitions
 const hypothesisSchema = z.object({
   title: z.string(),
   description: z.string(),
@@ -28,13 +26,17 @@ const hypothesisSchema = z.object({
   novelty: z.number().min(0).max(1)
 });
 
-const researchGoalSchema = z.object({
-  goal: z.string(),
-  preferences: z.any()
+const triggerDataSchema = z.object({
+  initialGoal: z.string(),
+  sourceHypothesis: z.string()
 });
 
 const researchPlanSchema = z.object({
-  researchPlan: z.any()
+  goal: z.string(),
+  preferences: z.string(),
+  constraints: z.string(),
+  attributes: z.string(),
+  instructions: z.string()
 });
 
 const hypothesesSchema = z.object({
@@ -42,8 +44,9 @@ const hypothesesSchema = z.object({
 });
 
 const reviewSchema = z.object({
+  hypothesis: z.string(),
   review: z.string(),
-  score: z.number()
+  score: z.enum(['already explained', 'other explanations more likely', 'missing piece', 'neutral', 'disproved'])
 });
 
 const rankingSchema = z.object({
@@ -62,33 +65,35 @@ const reportSchema = z.object({
   report: z.string()
 });
 
-const supervisorAgentOutputSchema = z.object({
-  researchPlan: z.any()
-});
-
 // 1. Define each step individually with proper schemas
 const initializeResearchGoalStep = new Step({
   id: 'initializeResearchGoal',
   name: 'Initialize Research Goal',
   description: 'Parse the research goal and create a research plan configuration',
-  inputSchema: researchGoalSchema,
+  inputSchema: triggerDataSchema,
   outputSchema: researchPlanSchema,
   execute: async ({ context }) => {
-    const { goal, preferences } = context.triggerData;
+    const { initialGoal, sourceHypothesis } = context.triggerData;
 
-    logger.info('Initializing research goal', { goal });
+    logger.info('Initializing research goal', { initialGoal });
 
     try {
-      const result = await coScientistSupervisorAgent.generate(`Goal: ${goal}\n\n Preferences: ${JSON.stringify(preferences)}`, {
-        output: supervisorAgentOutputSchema,
-      });
+      const result = await coScientistSupervisorAgent.generate(`
+        Research Goal: ${initialGoal} 
+        ${sourceHypothesis ? `Source Hypothesis: ${sourceHypothesis}` : ''}
+        `,
+        {
+          output: researchPlanSchema,
+        });
 
-      logger.info('Research goal initialized', {
-        planSize: JSON.stringify((result as any)?.object?.researchPlan).length
-      });
+      logger.info('Research goal initialized', (result as any)?.object);
 
       return {
-        researchPlan: (result as any)?.object?.researchPlan
+        goal: (result as any)?.object?.goal,
+        preferences: (result as any)?.object?.preferences,
+        constraints: (result as any)?.object?.constraints,
+        attributes: (result as any)?.object?.attributes,
+        instructions: (result as any)?.object?.instructions
       };
     } catch (error: any) {
       logger.error('Failed to initialize research goal', { error });
@@ -109,15 +114,14 @@ const enhancedLiteratureReviewStep = new Step({
     }))
   }),
   execute: async ({ context }) => {
-    const { goal } = context.triggerData;
+    const { goal, preferences, constraints, attributes, sourceHypothesis } = context.steps.initializeResearchGoal as any;
 
     logger.info('Performing enhanced literature review', { goal });
 
     try {
       const deepResearchResults = await deepResearchTool.execute!({
-        query: goal,
+        query: goal + '\n\n' + preferences + '\n\n' + constraints + '\n\n' + attributes + '\n\n' + sourceHypothesis,
         stream: false,
-        saveRawContent: false,
       } as any);
 
       // Format the results to match the expected schema
@@ -147,8 +151,8 @@ const generateInitialHypothesesStep = new Step({
   description: 'Generate initial hypotheses based on literature review',
   outputSchema: hypothesesSchema,
   execute: async ({ context }) => {
-    const { goal, preferences } = context.triggerData;
-    const { researchPlan } = context.steps.initializeResearchGoal as any;
+    const { sourceHypothesis } = context.triggerData as any;
+    const { goal, preferences, constraints, attributes, instructions } = context.steps.initializeResearchGoal as any;
     const { relevantLiterature } = context.steps.enhancedLiteratureReview as any;
 
     logger.info('Generating initial hypotheses', { goal });
@@ -161,18 +165,17 @@ const generateInitialHypothesesStep = new Step({
 
       const result = await coScientistGenerationAgentAfterLiteratureReview.generate(`
         Goal: ${goal}
-        Preferences: ${JSON.stringify(preferences)}
-        Research Plan: ${JSON.stringify(researchPlan)}
-        Source Hypothesis: 
-        Articles with Reasoning: ${literatureContext}`
+        Criteria for a strong hypothesis: ${preferences}
+        Existing hypothesis (if applicable): ${sourceHypothesis} ${instructions}
+        Literature review and analytical rationale (chronologically ordered, beginning with the most recent analysis): ${literatureContext}`
       );
 
-      logger.info('Generated initial hypotheses', {
-        count: (result as any)?.object?.length
-      });
+      logger.info('Generated initial hypothesis', (result as any).text);
+
+      // TODO: create multiple hypotheses
 
       return {
-        hypotheses: (result as any).object
+        hypotheses: [(result as any).text]
       };
     } catch (error: any) {
       logger.error('Failed to generate hypotheses', { error });
@@ -186,11 +189,7 @@ const reflectionAndReviewStep = new Step({
   name: 'Reflection and Review',
   description: 'Evaluate the correctness, quality, and novelty of the hypotheses',
   outputSchema: z.object({
-    reviewedHypotheses: z.array(z.object({
-      hypothesis: z.any(),
-      review: z.string(),
-      score: z.number()
-    }))
+    reviewedHypotheses: z.array(reviewSchema)
   }),
   execute: async ({ context }) => {
     const { hypotheses } = context.steps.generateInitialHypotheses as any;
@@ -199,13 +198,18 @@ const reflectionAndReviewStep = new Step({
       hypothesisCount: hypotheses.length
     });
 
+    // TODO: add article to review
+
     try {
       // Process hypotheses in parallel for better performance
       const reviewPromises = hypotheses.map(async (hypothesis: any) => {
         const result = await coScientistReflectionAgent.generate(`
           Hypothesis: ${JSON.stringify(hypothesis)}
           Article: 
-          `);
+          `,
+          {
+            output: reviewSchema
+          });
 
         return {
           hypothesis,
@@ -235,11 +239,7 @@ const rankHypothesesStep = new Step({
   name: 'Rank Hypotheses',
   description: 'Rank hypotheses using tournament-style comparisons',
   outputSchema: z.object({
-    rankedHypotheses: z.array(z.object({
-      hypothesis: z.any(),
-      review: z.string(),
-      score: z.number()
-    }))
+    rankedHypotheses: z.array(reviewSchema)
   }),
   execute: async ({ context }) => {
     const { goal, preferences } = context.triggerData;
@@ -268,7 +268,8 @@ const rankHypothesesStep = new Step({
 
       // Process matches in parallel for better performance
       const matchPromises = matches.map(async (match) => {
-        const result = await coScientistRankingSimAgent.generate(`
+        // Use coScientistRankingAgent for more detailed comparative analysis
+        const result = await coScientistRankingAgent.generate(`
           Goal: ${goal}
           Preferences: ${JSON.stringify(preferences)}
           Notes: 
@@ -279,6 +280,26 @@ const rankHypothesesStep = new Step({
           Hypothesis 2: ${JSON.stringify(match.hypothesis2.hypothesis)}
           Review 2: ${match.hypothesis2.review}`,
         );
+
+        // For simpler comparisons, use the ranking sim agent as a fallback
+        if (!result || !(result as any).object || !(result as any).object.betterIdea) {
+          const simResult = await coScientistRankingSimAgent.generate(`
+            Goal: ${goal}
+            Preferences: ${JSON.stringify(preferences)}
+            Notes: 
+            
+            Hypothesis 1: ${JSON.stringify(match.hypothesis1.hypothesis)}
+            Review 1: ${match.hypothesis1.review}
+            
+            Hypothesis 2: ${JSON.stringify(match.hypothesis2.hypothesis)}
+            Review 2: ${match.hypothesis2.review}`,
+          );
+
+          return {
+            match,
+            winner: (simResult as any).object.betterIdea === "1" ? match.hypothesis1 : match.hypothesis2
+          };
+        }
 
         return {
           match,
@@ -591,12 +612,9 @@ const generateFinalReportStep = new Step({
 
 // 2. Create the workflow with a proper trigger schema
 export const coScientistWorkflow = new Workflow({
-  name: 'co Scientist Workflow',
+  name: 'Co-Scientist Workflow',
   // description: 'An AI co-scientist workflow that generates hypotheses through an iterative "generate, debate, evolve" approach involving specialized agents.',
-  triggerSchema: z.object({
-    goal: z.string(),
-    preferences: z.string().optional()
-  })
+  triggerSchema: triggerDataSchema
 });
 
 // 3. Link steps in sequence with proper flow control

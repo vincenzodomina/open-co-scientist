@@ -2,9 +2,6 @@ import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
 import { memory } from '../memory';
 
-const article: string = "";
-const hypothesis: string = "";
-
 export const coScientistReflectionAgent = new Agent({
   name: "coScientistReflectionAgent",
   instructions: `
@@ -26,8 +23,8 @@ for a subset of observations. Include reasoning. Start with: "would we see some 
 the observations if the hypothesis was true:".
 4. Disproof analysis: determine if any observations contradict the hypothesis.
 Start with: "does some observations disprove the hypothesis:".
-5. Conclusion: state: "hypothesis: <already explained, other explanations more likely,
-missing piece, neutral, or disproved>".
+5. Conclusion: score with one of the following: "already explained", "other explanations more likely",
+"missing piece", "neutral", or "disproved".
 
 Scoring:
 * Already explained: hypothesis consistent, but causes are known. No novel explanation.
@@ -39,12 +36,7 @@ Scoring:
 Important: if observations are expected regardless of the hypothesis, and don’t disprove it,
 it’s neutral.
 
-Article:
-${article}
-Hypothesis:
-${hypothesis}
-Response (provide reasoning. end with: "hypothesis: <already explained, other explanations
-more likely, missing piece, neutral, or disproved>".)
+Create a response according to the given schema. Provide your reasoning in the review.
 `,
   model: openai("gpt-4o"),
   tools: {

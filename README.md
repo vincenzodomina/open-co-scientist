@@ -2,7 +2,7 @@
 
 <div align="center">
   
-  ![Open Co Scientist Logo](./co-scientist-architecture.jpg)
+  ![Open Co Scientist Logo](./docs/co-scientist-architecture.jpg)
   
   *An open-source implementation of an AI-powered scientific research assistant*
   
