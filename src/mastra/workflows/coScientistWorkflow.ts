@@ -50,7 +50,8 @@ const reviewSchema = z.object({
 });
 
 const rankingSchema = z.object({
-  betterIdea: z.string()
+  betterHypothesis: z.number(),
+  rationale: z.string()
 });
 
 const evolutionSchema = z.object({
@@ -239,10 +240,10 @@ const rankHypothesesStep = new Step({
   name: 'Rank Hypotheses',
   description: 'Rank hypotheses using tournament-style comparisons',
   outputSchema: z.object({
-    rankedHypotheses: z.array(reviewSchema)
+    rankedHypotheses: z.array(hypothesisSchema)
   }),
   execute: async ({ context }) => {
-    const { goal, preferences } = context.triggerData;
+    const { goal, preferences, attributes, constraints } = context.triggerData;
     const { reviewedHypotheses } = context.steps.reflectionAndReview as any;
 
     logger.info('Starting hypothesis ranking', {
@@ -271,39 +272,50 @@ const rankHypothesesStep = new Step({
         // Use coScientistRankingAgent for more detailed comparative analysis
         const result = await coScientistRankingAgent.generate(`
           Goal: ${goal}
-          Preferences: ${JSON.stringify(preferences)}
-          Notes: 
+          Evaluation criteria: ${preferences}
+          Attributes: ${attributes}
+          Considerations: ${constraints}
           
           Hypothesis 1: ${JSON.stringify(match.hypothesis1.hypothesis)}
-          Review 1: ${match.hypothesis1.review}
+          Review of hypothesis 1: ${match.hypothesis1.review}
           
           Hypothesis 2: ${JSON.stringify(match.hypothesis2.hypothesis)}
-          Review 2: ${match.hypothesis2.review}`,
+          Review of hypothesis 2: ${match.hypothesis2.review}`,
+          {
+            output: rankingSchema
+          }
         );
 
         // For simpler comparisons, use the ranking sim agent as a fallback
-        if (!result || !(result as any).object || !(result as any).object.betterIdea) {
+        if (!result || !(result as any).object || !(result as any).object.betterHypothesis) {
           const simResult = await coScientistRankingSimAgent.generate(`
             Goal: ${goal}
-            Preferences: ${JSON.stringify(preferences)}
-            Notes: 
+            Criteria for hypothesis superiority: ${preferences}
+            Attributes: ${attributes}
+            Considerations: ${constraints}
             
             Hypothesis 1: ${JSON.stringify(match.hypothesis1.hypothesis)}
-            Review 1: ${match.hypothesis1.review}
+            Initial review of hypothesis 1: ${match.hypothesis1.review}
             
             Hypothesis 2: ${JSON.stringify(match.hypothesis2.hypothesis)}
-            Review 2: ${match.hypothesis2.review}`,
+            Initial review of hypothesis 2: ${match.hypothesis2.review}
+            
+            Additional notes: ${constraints}
+            `,
+            {
+              output: rankingSchema
+            }
           );
 
           return {
             match,
-            winner: (simResult as any).object.betterIdea === "1" ? match.hypothesis1 : match.hypothesis2
+            winner: parseInt((simResult as any).object.betterHypothesis) === 1 ? match.hypothesis1 : match.hypothesis2
           };
         }
 
         return {
           match,
-          winner: (result as any).object.betterIdea === "1" ? match.hypothesis1 : match.hypothesis2
+          winner: parseInt((result as any).object.betterHypothesis) === 1 ? match.hypothesis1 : match.hypothesis2
         };
       });
 
